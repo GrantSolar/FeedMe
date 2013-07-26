@@ -24,13 +24,14 @@ def get_image(url):
     surface = pygame.image.fromstring(data, size, mode)
     return surface
 
-#Retrieves thumbnail url from entry, returns surface via get_image
-def get_thumb(entry, get_biggest=1):
+#Retrieves thumbnail url from entry via get_image, blits image to screen
+def render_thumb(entry, coords, get_biggest=1):
 
-    obj = entry['media_thumbnail']
-    thumb = obj[get_biggest]['url']
+    #obj = entry['media_thumbnail']
+    thumb = entry[get_biggest]['url']
 
-    return get_image(thumb)
+    img = get_image(thumb)
+    screen.blit(img, coords)
 
 #Splits a string into maximum length substrings for wrapping
 def split_text(text, rect, font):
@@ -44,22 +45,22 @@ def split_text(text, rect, font):
         
         while font.size(text[:i])[0] < rect.width and i < len(text):
             i += 1
-
         if i < len(text):
             i = text.rfind(" ", 0, i) + 1
-
         lines.append(text[:i])
         text = text[i:]
 
     return lines
 
-#Calls split_text on a string then render as a surface
+#Calls split_text on a string then render and blits
 def render_text(text, rect, font):
 
     lines = split_text(text, rect, font)
-    y=0
+    y = 0
     spacing = 3
     font_height = font.size("Tg")[1]
+
+    #blit to screen one line at a time
     for line in lines:
         line = font.render(line, 1, colour)
         screen.blit(line, (rect[0], rect[1]+y))
@@ -68,11 +69,18 @@ def render_text(text, rect, font):
 pygame.init()
 pygame.display.set_caption('Feed Me')
 
-w=640
-h=480
-size=(w,h)
+WIDTH=640
+HEIGHT=480
+TEXT_LEFT = 150
+MARGIN = 5
+
+title_font = pygame.font.SysFont("arial", 30)
+sum_font = pygame.font.SysFont("arial", 16)
+
+size = (WIDTH, HEIGHT)
 screen = pygame.display.set_mode(size)
 
+colour = (10,10,10)
 bg_colour = (255,255,255)
 screen.fill(bg_colour)
 
@@ -83,29 +91,12 @@ data = feedparser.parse(url)
 #useful ones:
 #media_thumbnail, title, link, published, summary
 
-
-#for datum in data:
-#    print(datum)
-
-colour = (10,10,10)
-
-font = pygame.font.SysFont("arial", 30)
-title = font.render(data.entries[0]['title'], 1, colour)
-
-font = pygame.font.SysFont("arial", 16)
+title = data.entries[0]['title']
 summary = data.entries[0]['summary']
-print(split_text(summary, (0,0, 100, 100), font))
-#summary = font.render(summary, 1, colour)
+thumb = data.entries[0]['media_thumbnail']
 
-
-
-title_pos = title.get_rect() #text height and width 298 29
-
-img = get_thumb(data.entries[0])
-
-#Update to screen. Move these to respective functions?
-screen.blit(img, (0,0))
-screen.blit(title, (150,0))
-#screen.blit(summary, (150, 40))
-render_text(summary, (150,40, 500,50), font)
+#Update to screen
+render_thumb(thumb, (0,0))
+render_text(title, (TEXT_LEFT,0, WIDTH - TEXT_LEFT, HEIGHT), title_font)
+render_text(summary, (150,40, 500,50), sum_font)
 pygame.display.flip()
