@@ -10,8 +10,8 @@ from io import BytesIO
 def get_image(url):
     
     #Open image from url
-    img_file = urllib.request.urlopen(url)
-    img = BytesIO(img_file.read())
+    img_url = urllib.request.urlopen(url)
+    img = BytesIO(img_url.read())
     img = Image.open(img)
 
     mode = img.mode
@@ -24,7 +24,47 @@ def get_image(url):
     surface = pygame.image.fromstring(data, size, mode)
     return surface
 
-#def get_thumb(
+#Retrieves thumbnail url from entry, returns surface via get_image
+def get_thumb(entry, get_biggest=1):
+
+    obj = entry['media_thumbnail']
+    thumb = obj[get_biggest]['url']
+
+    return get_image(thumb)
+
+#Splits a string into maximum length substrings for wrapping
+def split_text(text, rect, font):
+
+    rect = pygame.Rect(rect)
+    i = 1
+    lines = []
+
+    #Iterate the string. If it's over max width, split at most recent space. Repeat
+    while text:
+        
+        while font.size(text[:i])[0] < rect.width and i < len(text):
+            i += 1
+
+        if i < len(text):
+            i = text.rfind(" ", 0, i) + 1
+
+        lines.append(text[:i])
+        text = text[i:]
+
+    return lines
+
+#Calls split_text on a string then render as a surface
+def render_text(text, rect, font):
+
+    lines = split_text(text, rect, font)
+    y=0
+    spacing = 3
+    font_height = font.size("Tg")[1]
+    for line in lines:
+        line = font.render(line, 1, colour)
+        screen.blit(line, (rect[0], rect[1]+y))
+        y += font_height + spacing
+
 pygame.init()
 pygame.display.set_caption('Feed Me')
 
@@ -42,31 +82,30 @@ data = feedparser.parse(url)
 
 #useful ones:
 #media_thumbnail, title, link, published, summary
-"""font = pygame.font.SysFont("comicsansms", 36)
-#text = font.render(data.entries[0].title, 1, (10, 10, 10))
-screen = screen.convert()
-screen.fill((250,250,250))
-text = font.render("Hello", 1, (10,10,10))
-textpos = text.get_rect()
 
-screen.blit(text, textpos)"""
 
 #for datum in data:
 #    print(datum)
-#x = urllib.request.urlopen('http://www.google.com/images/srpr/logo4w.png')
-#file = StringIO(x).read()
+
+colour = (10,10,10)
+
+font = pygame.font.SysFont("arial", 30)
+title = font.render(data.entries[0]['title'], 1, colour)
+
+font = pygame.font.SysFont("arial", 16)
+summary = data.entries[0]['summary']
+print(split_text(summary, (0,0, 100, 100), font))
+#summary = font.render(summary, 1, colour)
 
 
-#img = get_image('http://i.imgur.com/CcjcXzj.jpg')
-#screen.blit(img, (0,0))
-font = pygame.font.SysFont("comicsansms", 36)
-text = font.render(data.entries[0]['title'], 1, (10,10,10))
-textpos = text.get_rect() #text height and width
 
-thumb = data.entries[0]['media_thumbnail']
-img = get_image(thumb[1]['url']) #1 gives bigger image. Could also use 0
+title_pos = title.get_rect() #text height and width 298 29
 
-screen.blit(img,textpos)
+img = get_thumb(data.entries[0])
 
-screen.blit(text, textpos)
+#Update to screen. Move these to respective functions?
+screen.blit(img, (0,0))
+screen.blit(title, (150,0))
+#screen.blit(summary, (150, 40))
+render_text(summary, (150,40, 500,50), font)
 pygame.display.flip()
