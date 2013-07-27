@@ -24,14 +24,15 @@ def get_image(url):
     surface = pygame.image.fromstring(data, size, mode)
     return surface
 
-#Retrieves thumbnail url from entry via get_image, blits image to screen
-def render_thumb(entry, coords, get_biggest=1):
 
-    #obj = entry['media_thumbnail']
+#Retrieves thumbnail url from entry via get_image, blits image to screen
+def draw_thumb(entry, coords, get_biggest=1):
+
     thumb = entry[get_biggest]['url']
 
     img = get_image(thumb)
     screen.blit(img, coords)
+
 
 #Splits a string into maximum length substrings for wrapping
 def split_text(text, rect, font):
@@ -52,8 +53,9 @@ def split_text(text, rect, font):
 
     return lines
 
+
 #Calls split_text on a string then render and blits
-def render_text(text, rect, font):
+def draw_text(text, rect, font):
 
     lines = split_text(text, rect, font)
     y = 0
@@ -66,13 +68,22 @@ def render_text(text, rect, font):
         screen.blit(line, (rect[0], rect[1]+y))
         y += font_height + spacing
 
+
+################################
+#
+#   Main body of program
+#
+################################
+
+
 pygame.init()
 pygame.display.set_caption('Feed Me')
 
 WIDTH=640
 HEIGHT=480
-TEXT_LEFT = 150
-MARGIN = 5
+TEXT_LEFT = 153 #temp
+MARGIN = 5      #Pixels between content and window border
+SPACING = 3
 
 title_font = pygame.font.SysFont("arial", 30)
 sum_font = pygame.font.SysFont("arial", 16)
@@ -83,20 +94,32 @@ screen = pygame.display.set_mode(size)
 colour = (10,10,10)
 bg_colour = (255,255,255)
 screen.fill(bg_colour)
+pygame.display.flip()
 
 url = "http://feeds.bbci.co.uk/news/rss.xml"
 
-data = feedparser.parse(url)
+data = feedparser.parse(url)    #need to add exception handling
 
 #useful ones:
 #media_thumbnail, title, link, published, summary
 
-title = data.entries[0]['title']
-summary = data.entries[0]['summary']
-thumb = data.entries[0]['media_thumbnail']
+count = 0
 
-#Update to screen
-render_thumb(thumb, (0,0))
-render_text(title, (TEXT_LEFT,0, WIDTH - TEXT_LEFT, HEIGHT), title_font)
-render_text(summary, (150,40, 500,50), sum_font)
-pygame.display.flip()
+thumbheight = 81 #temp var
+
+for entry in data.entries:
+    
+    title = entry['title']
+    summary = entry['summary']
+    thumb = entry['media_thumbnail']
+
+    #Render and blit to screen
+    draw_thumb(thumb, (MARGIN, (thumbheight + SPACING)*count + MARGIN))
+    draw_text(title, (TEXT_LEFT,(thumbheight + SPACING)*count, WIDTH - MARGIN - TEXT_LEFT, HEIGHT), title_font)
+    #need to calculate actual value, 40 is ballpark
+    draw_text(summary, (TEXT_LEFT,(thumbheight + SPACING)*count + 40, WIDTH - MARGIN - TEXT_LEFT,50), sum_font)
+
+    count += 1
+pygame.display.flip()   #may slow it down a bit. Need to test
+
+print('done')
