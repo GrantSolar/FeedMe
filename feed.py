@@ -81,7 +81,6 @@ pygame.display.set_caption('Feed Me')
 
 WIDTH=640
 HEIGHT=480
-TEXT_LEFT = 153 #temp
 MARGIN = 5      #Pixels between content and window border
 SPACING = 3
 
@@ -105,7 +104,9 @@ data = feedparser.parse(url)    #need to add exception handling
 
 count = 0
 
-thumbheight = 81 #temp var
+thumb_width = int(data.entries[0]['media_thumbnail'][1]['width']) #1 for bigger thumb, like in draw_thumb
+thumb_height = int(data.entries[0]['media_thumbnail'][1]['height'])
+text_left = MARGIN + thumb_width + SPACING
 
 for entry in data.entries:
     
@@ -114,12 +115,15 @@ for entry in data.entries:
     thumb = entry['media_thumbnail']
 
     #Render and blit to screen
-    draw_thumb(thumb, (MARGIN, (thumbheight + SPACING)*count + MARGIN))
-    draw_text(title, (TEXT_LEFT,(thumbheight + SPACING)*count, WIDTH - MARGIN - TEXT_LEFT, HEIGHT), title_font)
+    draw_thumb(thumb, (MARGIN, (thumb_height + SPACING)*count + MARGIN))
+    draw_text(title, (text_left,(thumb_height + SPACING)*count, WIDTH - MARGIN - text_left, HEIGHT), title_font)
     #need to calculate actual value, 40 is ballpark
-    draw_text(summary, (TEXT_LEFT,(thumbheight + SPACING)*count + 40, WIDTH - MARGIN - TEXT_LEFT,50), sum_font)
+    draw_text(summary, (text_left,(thumb_height + SPACING)*count + 40, WIDTH - MARGIN - text_left,50), sum_font)
 
-    count += 1
-pygame.display.flip()   #may slow it down a bit. Need to test
-
-print('done')
+    #Only draw as many as you can have on screen
+    if count <= 6:
+        pygame.display.flip()
+    else:
+        break
+    
+    count +=1
