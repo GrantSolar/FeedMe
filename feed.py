@@ -6,6 +6,16 @@ from PIL import Image
 from io import BytesIO
 
 
+#Holds relevant data for each article
+class article:
+    def __init__(self, title, summary, thumb, link, time):
+        self.title = title
+        self.summary = summary
+        self.thumb = thumb
+        self.link = link
+        self.time = time
+
+        
 #Returns the image at url as a pygame surface
 def get_image_from_url(url):
     
@@ -28,12 +38,30 @@ def get_image_from_url(url):
 #Returns thumbnail from entry as pygame surface
 def get_thumb(entry, big=1):
 
+    entry = entry['media_thumbnail']
     if len(entry) == 1:
         big = 0
     url = entry[big]['url']
 
     return get_image_from_url(url)
 
+
+#Retrieve data from feed, returning a list of articles
+def fetch_data(url):
+
+    data = feedparser.parse(url)
+    articles = []
+
+    for entry in data.entries:
+        title = entry['title']
+        summary = entry['summary']
+        link = entry['link']
+        time = entry['published']
+        thumb = get_thumb(entry)
+
+        articles.append( article(title, summary, thumb, link, time) )
+
+    return articles
 
 #Splits a string into maximum length substrings for wrapping
 def split_text(text, rect, font):
@@ -72,24 +100,21 @@ def draw_text(text, rect, font):
 
 #Commits retrieved data to screen
 #Causes flickering of pictures except top 2
-def update_screen(offset):
+#6 is placeholder atm
+def update_screen(articles, offset, first=0, num=6):
 
     count = 0
-    for entry in data.entries:
-    
-        title = entry['title']
-        summary = entry['summary']
-        #thumb = entry['media_thumbnail']
-        #thumbs.append(get_thumb(entry))
+    articles = articles[first:]
+    for article in articles:
 
         #Render and blit to screen
-        screen.blit(thumbs[count], (MARGIN, (thumb_height + SPACING)*count + MARGIN + offset))
-        draw_text(title, (text_left,(thumb_height + SPACING)*count + offset, WIDTH - MARGIN - text_left, HEIGHT), title_font)
+        screen.blit(article.thumb, (MARGIN, (thumb_height + SPACING)*count + MARGIN + offset))
+        draw_text(article.title, (text_left,(thumb_height + SPACING)*count + offset, WIDTH - MARGIN - text_left, HEIGHT), title_font)
         #need to calculate actual value, 40 is ballpark
-        draw_text(summary, (text_left,(thumb_height + SPACING)*count + 40 + offset, WIDTH - MARGIN - text_left,50), sum_font)
+        draw_text(article.summary, (text_left,(thumb_height + SPACING)*count + 40 + offset, WIDTH - MARGIN - text_left,50), sum_font)
 
         #Only draw as many as you can have on screen
-        if count < 6:
+        if count < 6:   #source of flickering here
             pygame.display.flip()
         else:
             break
@@ -139,21 +164,30 @@ text_left = MARGIN + thumb_width + SPACING
 count = 0
 offset = 0
 
-thumbs = []
+articles = fetch_data(url)
+update_screen(articles, offset)
 
-    #move to fetch_data function
+#These remnants left in because I might want to display first few entries ASAP on load
+#then do real stuff in background. Get info to user quick since getting all article info
+#can be slow, so just get first few
+"""    #move to fetch_data function
 for entry in data.entries:
     
     title = entry['title']
     summary = entry['summary']
     #thumb = entry['media_thumbnail']
-    thumbs.append(get_thumb(entry['media_thumbnail']))
+    thumbs.append(get_thumb(entry))
 
     #Render and blit to screen
     screen.blit(thumbs[count], (MARGIN, (thumb_height + SPACING)*count + MARGIN + offset))
-    draw_text(title, (text_left,(thumb_height + SPACING)*count + offset, WIDTH - MARGIN - text_left, HEIGHT), title_font)
-    #need to calculate actual value, 40 is ballpark
-    draw_text(summary, (text_left,(thumb_height + SPACING)*count + 40 + offset, WIDTH - MARGIN - text_left,50), sum_font)
+    
+    title_top = (thumb_height + SPACING)*count + offset
+    summary_top = (thumb_height + SPACING)*count + 40 + offset #calculate a proper value, 40 is ballpark
+    text_width = WIDTH - MARGIN - text_left
+
+    #calculate values for HEIGHT and 50
+    draw_text(title, (text_left,title_top, text_width, HEIGHT), title_font)
+    draw_text(summary, (text_left,summary_top, text_width,50), sum_font)
 
     #Only draw as many as you can have on screen
     if count < 6:
@@ -161,8 +195,7 @@ for entry in data.entries:
     else:
         break
                 
-    count +=1
-
+    count +=1"""
 
 
 ################################
@@ -182,12 +215,10 @@ while True:
         if event.rel[1] != 0:   #add some tolerance?
             offset += event.rel[1]    #add some fluidity to the effect
                                             #velocity = rel[1]?
-            update_screen(offset)
+            update_screen(articles, offset)
 
     elif event.type == pygame.MOUSEBUTTONDOWN:
         scrolling = True
 
     elif event.type == pygame.MOUSEBUTTONUP:
         scrolling = False
-
-
