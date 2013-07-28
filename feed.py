@@ -113,13 +113,13 @@ def update_screen(articles, offset, first=0, num=6):
         #need to calculate actual value, 40 is ballpark
         draw_text(article.summary, (text_left,(thumb_height + SPACING)*count + 40 + offset, WIDTH - MARGIN - text_left,50), sum_font)
 
+        count +=1
+
         #Only draw as many as you can have on screen
-        if count < 6:   #source of flickering here
-            pygame.display.flip()
-        else:
+        if count >= num:
             break
                     
-        count +=1
+    pygame.display.flip()
       
     
 ################################
