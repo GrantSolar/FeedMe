@@ -7,7 +7,7 @@ from io import BytesIO
 
 
 #Returns the image at url as a pygame surface
-def get_image(url):
+def get_image_from_url(url):
     
     #Open image from url
     img_url = urllib.request.urlopen(url)
@@ -25,13 +25,14 @@ def get_image(url):
     return surface
 
 
-#Retrieves thumbnail url from entry via get_image, blits image to screen
-def draw_thumb(entry, coords, get_biggest=1):
+#Returns thumbnail from entry as pygame surface
+def get_thumb(entry, big=1):
 
-    thumb = entry[get_biggest]['url']
+    if len(entry) == 1:
+        big = 0
+    url = entry[big]['url']
 
-    img = get_image(thumb)
-    screen.blit(img, coords)
+    return get_image_from_url(url)
 
 
 #Splits a string into maximum length substrings for wrapping
@@ -69,6 +70,33 @@ def draw_text(text, rect, font):
         y += font_height + spacing
 
 
+#Commits retrieved data to screen
+#Causes flickering of pictures except top 2
+def update_screen(offset):
+
+    count = 0
+    for entry in data.entries:
+    
+        title = entry['title']
+        summary = entry['summary']
+        #thumb = entry['media_thumbnail']
+        #thumbs.append(get_thumb(entry))
+
+        #Render and blit to screen
+        screen.blit(thumbs[count], (MARGIN, (thumb_height + SPACING)*count + MARGIN + offset))
+        draw_text(title, (text_left,(thumb_height + SPACING)*count + offset, WIDTH - MARGIN - text_left, HEIGHT), title_font)
+        #need to calculate actual value, 40 is ballpark
+        draw_text(summary, (text_left,(thumb_height + SPACING)*count + 40 + offset, WIDTH - MARGIN - text_left,50), sum_font)
+
+        #Only draw as many as you can have on screen
+        if count < 6:
+            pygame.display.flip()
+        else:
+            break
+                    
+        count +=1
+      
+    
 ################################
 #
 #   Main body of program
@@ -101,29 +129,65 @@ data = feedparser.parse(url)    #need to add exception handling
 
 #useful ones:
 #media_thumbnail, title, link, published, summary
-
-count = 0
-
-thumb_width = int(data.entries[0]['media_thumbnail'][1]['width']) #1 for bigger thumb, like in draw_thumb
-thumb_height = int(data.entries[0]['media_thumbnail'][1]['height'])
+big = 1
+if len(data.entries[0]['media_thumbnail']) == 1:
+    big = 0
+thumb_width = int(data.entries[0]['media_thumbnail'][big]['width'])
+thumb_height = int(data.entries[0]['media_thumbnail'][big]['height'])
 text_left = MARGIN + thumb_width + SPACING
 
+count = 0
+offset = 0
+
+thumbs = []
+
+    #move to fetch_data function
 for entry in data.entries:
     
     title = entry['title']
     summary = entry['summary']
-    thumb = entry['media_thumbnail']
+    #thumb = entry['media_thumbnail']
+    thumbs.append(get_thumb(entry['media_thumbnail']))
 
     #Render and blit to screen
-    draw_thumb(thumb, (MARGIN, (thumb_height + SPACING)*count + MARGIN))
-    draw_text(title, (text_left,(thumb_height + SPACING)*count, WIDTH - MARGIN - text_left, HEIGHT), title_font)
+    screen.blit(thumbs[count], (MARGIN, (thumb_height + SPACING)*count + MARGIN + offset))
+    draw_text(title, (text_left,(thumb_height + SPACING)*count + offset, WIDTH - MARGIN - text_left, HEIGHT), title_font)
     #need to calculate actual value, 40 is ballpark
-    draw_text(summary, (text_left,(thumb_height + SPACING)*count + 40, WIDTH - MARGIN - text_left,50), sum_font)
+    draw_text(summary, (text_left,(thumb_height + SPACING)*count + 40 + offset, WIDTH - MARGIN - text_left,50), sum_font)
 
     #Only draw as many as you can have on screen
-    if count <= 6:
+    if count < 6:
         pygame.display.flip()
     else:
         break
-    
+                
     count +=1
+
+
+
+################################
+#
+#   Main event loop
+#
+################################
+
+scrolling = False
+
+while True:
+
+    event = pygame.event.wait()
+
+    if event.type == pygame.MOUSEMOTION and scrolling:
+        screen.fill(bg_colour)
+        if event.rel[1] != 0:   #add some tolerance?
+            offset += event.rel[1]    #add some fluidity to the effect
+                                            #velocity = rel[1]?
+            update_screen(offset)
+
+    elif event.type == pygame.MOUSEBUTTONDOWN:
+        scrolling = True
+
+    elif event.type == pygame.MOUSEBUTTONUP:
+        scrolling = False
+
+
