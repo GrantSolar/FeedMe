@@ -1,19 +1,24 @@
 import feedparser
 import pygame
 import urllib
+import threading
 
 from PIL import Image
 from io import BytesIO
 
 
-#Holds relevant data for each article
+#Simple structure for storing data used
 class article:
-    def __init__(self, title, summary, thumb, link, time):
+    def __init__(self, title, summary, thumb_link, link, time):
         self.title = title
         self.summary = summary
-        self.thumb = thumb
+        self.thumb = ""
         self.link = link
         self.time = time
+        self.thumb_link = thumb_link
+
+    def set_thumb(self, thumb):
+        self.thumb = thumb
 
         
 #Returns the image at url as a pygame surface
@@ -47,7 +52,7 @@ def get_thumb(entry, big=1):
 
 
 #Retrieve data from feed, returning a list of articles
-def fetch_data(url):
+def fetch_text_data(url):
 
     data = feedparser.parse(url)
     articles = []
@@ -57,9 +62,9 @@ def fetch_data(url):
         summary = entry['summary']
         link = entry['link']
         time = entry['published']
-        thumb = get_thumb(entry)
+        thumb_link = entry
 
-        articles.append( article(title, summary, thumb, link, time) )
+        articles.append( article(title, summary, thumb_link, link, time) )
 
     return articles
 
@@ -108,20 +113,36 @@ def update_screen(articles, offset, first=0, num=6):
     for article in articles:
 
         #Render and blit to screen
-        screen.blit(article.thumb, (MARGIN, (thumb_height + SPACING)*count + MARGIN + offset))
+        if not article.thumb == "":
+            screen.blit(article.thumb, (MARGIN, (thumb_height + SPACING)*count + MARGIN + offset))
         draw_text(article.title, (text_left,(thumb_height + SPACING)*count + offset, WIDTH - MARGIN - text_left, HEIGHT), title_font)
-        #need to calculate actual value, 40 is ballpark
-        draw_text(article.summary, (text_left,(thumb_height + SPACING)*count + 40 + offset, WIDTH - MARGIN - text_left,50), sum_font)
-
-        count +=1
+        draw_text(article.summary, (text_left,(thumb_height + SPACING)*count + title_font_height + offset, WIDTH - MARGIN - text_left,50), sum_font)
 
         #Only draw as many as you can have on screen
+        count +=1
         if count >= num:
             break
                     
     pygame.display.flip()
       
-    
+
+class fetch_thumbs(threading.Thread):
+
+    def __init__(self, threadID, name, counter):
+        threading.Thread.__init__(self)
+        self.threadID = threadID
+        self.name = name
+        self.counter = counter
+    def run(self):
+        global articles, offset
+        count = 0
+        print("Starting "+self.name)
+        for article in articles:
+            article.set_thumb(get_thumb(article.thumb_link))
+            screen.blit(article.thumb, (MARGIN, (thumb_height + SPACING)*count + MARGIN + offset))
+            count += 1
+        
+
 ################################
 #
 #   Main body of program
@@ -139,6 +160,7 @@ SPACING = 3
 
 title_font = pygame.font.SysFont("arial", 30)
 sum_font = pygame.font.SysFont("arial", 16)
+title_font_height = title_font.size("Tg")[1]
 
 size = (WIDTH, HEIGHT)
 screen = pygame.display.set_mode(size)
@@ -147,6 +169,7 @@ colour = (10,10,10)
 bg_colour = (255,255,255)
 screen.fill(bg_colour)
 pygame.display.flip()
+
 
 url = "http://feeds.bbci.co.uk/news/rss.xml"
 
@@ -164,8 +187,11 @@ text_left = MARGIN + thumb_width + SPACING
 count = 0
 offset = 0
 
-articles = fetch_data(url)
-update_screen(articles, offset)
+articles = fetch_text_data(url)
+thread1 = fetch_thumbs(1, "Thread-1", 1)
+thread1.start()
+#threading.start_new_thread(fetch_thumbs, ("Thread-1", 2,))
+update_screen(articles, offset, first=0, num=len(data.entries)-1)
 
 #These remnants left in because I might want to display first few entries ASAP on load
 #then do real stuff in background. Get info to user quick since getting all article info
@@ -215,10 +241,11 @@ while True:
         if event.rel[1] != 0:   #add some tolerance?
             offset += event.rel[1]    #add some fluidity to the effect
                                             #velocity = rel[1]?
-            update_screen(articles, offset)
+            update_screen(articles, offset, num=len(data.entries))
 
     elif event.type == pygame.MOUSEBUTTONDOWN:
         scrolling = True
 
     elif event.type == pygame.MOUSEBUTTONUP:
         scrolling = False
+
