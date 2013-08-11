@@ -126,6 +126,8 @@ def update_screen(articles, offset, first=0, num=6):
     pygame.display.flip()
       
 
+#Threading to fetch images. Speeds start-up time
+#occasional flickering when scrolling as loads
 class fetch_thumbs(threading.Thread):
 
     def __init__(self, threadID, name, counter):
@@ -140,6 +142,7 @@ class fetch_thumbs(threading.Thread):
         for article in articles:
             article.set_thumb(get_thumb(article.thumb_link))
             screen.blit(article.thumb, (MARGIN, (thumb_height + SPACING)*count + MARGIN + offset))
+            pygame.display.flip()
             count += 1
         
 
@@ -189,39 +192,8 @@ offset = 0
 
 articles = fetch_text_data(url)
 thread1 = fetch_thumbs(1, "Thread-1", 1)
-thread1.start()
-#threading.start_new_thread(fetch_thumbs, ("Thread-1", 2,))
-update_screen(articles, offset, first=0, num=len(data.entries)-1)
-
-#These remnants left in because I might want to display first few entries ASAP on load
-#then do real stuff in background. Get info to user quick since getting all article info
-#can be slow, so just get first few
-"""    #move to fetch_data function
-for entry in data.entries:
-    
-    title = entry['title']
-    summary = entry['summary']
-    #thumb = entry['media_thumbnail']
-    thumbs.append(get_thumb(entry))
-
-    #Render and blit to screen
-    screen.blit(thumbs[count], (MARGIN, (thumb_height + SPACING)*count + MARGIN + offset))
-    
-    title_top = (thumb_height + SPACING)*count + offset
-    summary_top = (thumb_height + SPACING)*count + 40 + offset #calculate a proper value, 40 is ballpark
-    text_width = WIDTH - MARGIN - text_left
-
-    #calculate values for HEIGHT and 50
-    draw_text(title, (text_left,title_top, text_width, HEIGHT), title_font)
-    draw_text(summary, (text_left,summary_top, text_width,50), sum_font)
-
-    #Only draw as many as you can have on screen
-    if count < 6:
-        pygame.display.flip()
-    else:
-        break
-                
-    count +=1"""
+thread1.start() #need to join at some point
+update_screen(articles, offset)
 
 
 ################################
